@@ -1,0 +1,17 @@
+{
+  "name": "生活费预算记账",
+  "short_name": "预算记账",
+  "description": "记录三餐和额外花销，按多档生活费预算计算节约与超支。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f6f3",
+  "theme_color": "#111111",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
