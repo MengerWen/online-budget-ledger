@@ -19,15 +19,18 @@ export async function upsertDayRecord(
 ): Promise<ServiceResult<DayRecord>> {
   const { data, error } = await requireSupabase()
     .from("day_records")
-    .upsert({
-      user_id: userId,
-      date: values.date,
-      breakfast: values.breakfast,
-      lunch: values.lunch,
-      dinner: values.dinner,
-      note: values.note,
-      updated_at: new Date().toISOString()
-    })
+    .upsert(
+      {
+        user_id: userId,
+        date: values.date,
+        breakfast: values.breakfast,
+        lunch: values.lunch,
+        dinner: values.dinner,
+        note: values.note,
+        updated_at: new Date().toISOString()
+      },
+      { onConflict: "user_id,date" }
+    )
     .select("*")
     .single();
 
