@@ -15,7 +15,7 @@ export async function fetchDayRecords(userId: string): Promise<ServiceResult<Day
 
 export async function upsertDayRecord(
   userId: string,
-  values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "note">
+  values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "breakfastNote" | "lunchNote" | "dinnerNote" | "note">
 ): Promise<ServiceResult<DayRecord>> {
   const client = requireSupabase();
   const payload = {
@@ -24,6 +24,9 @@ export async function upsertDayRecord(
     breakfast: values.breakfast,
     lunch: values.lunch,
     dinner: values.dinner,
+    breakfast_note: values.breakfastNote,
+    lunch_note: values.lunchNote,
+    dinner_note: values.dinnerNote,
     note: values.note,
     updated_at: new Date().toISOString()
   };

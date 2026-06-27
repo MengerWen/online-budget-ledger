@@ -38,6 +38,9 @@ export type Database = {
           breakfast: number | null;
           lunch: number | null;
           dinner: number | null;
+          breakfast_note: string | null;
+          lunch_note: string | null;
+          dinner_note: string | null;
           note: string | null;
           created_at: string;
           updated_at: string;
@@ -49,12 +52,18 @@ export type Database = {
           breakfast?: number | null;
           lunch?: number | null;
           dinner?: number | null;
+          breakfast_note?: string | null;
+          lunch_note?: string | null;
+          dinner_note?: string | null;
           note?: string | null;
         };
         Update: {
           breakfast?: number | null;
           lunch?: number | null;
           dinner?: number | null;
+          breakfast_note?: string | null;
+          lunch_note?: string | null;
+          dinner_note?: string | null;
           note?: string | null;
           updated_at?: string;
         };

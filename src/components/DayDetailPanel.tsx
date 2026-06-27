@@ -15,7 +15,9 @@ type Props = {
   budgets: BudgetPlan[];
   statuses: Map<string, BudgetStatus>;
   detailRef: RefObject<HTMLElement>;
-  onSaveDayRecord: (values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "note">) => Promise<void>;
+  onSaveDayRecord: (
+    values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "breakfastNote" | "lunchNote" | "dinnerNote" | "note">
+  ) => Promise<void>;
   onCreateExpense: (values: Pick<ExtraExpense, "date" | "amount" | "category" | "note">) => Promise<void>;
   onDeleteExpense: (id: string) => Promise<void>;
 };

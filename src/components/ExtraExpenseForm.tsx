@@ -1,9 +1,8 @@
 import { Plus } from "lucide-react";
 import { FormEvent, useState } from "react";
 import type { ExtraExpense } from "../types";
+import { EXTRA_EXPENSE_CATEGORIES } from "../utils/extraCategories";
 import { parseMoneyInput } from "../utils/validation";
-
-const categories = ["饮料", "零食", "交通", "日用品", "娱乐", "学习", "其他"];
 
 type Props = {
   selectedDateKey: string;
@@ -23,7 +22,7 @@ export function ExtraExpenseForm({ selectedDateKey, onCreate }: Props) {
       setError(parsed.error ?? "请输入额外花销金额");
       return;
     }
-    await onCreate({ date: selectedDateKey, amount: parsed.value, category, note: note || null });
+    await onCreate({ date: selectedDateKey, amount: parsed.value, category, note: note.trim() || null });
     setAmount("");
     setNote("");
     setError(null);
@@ -33,7 +32,7 @@ export function ExtraExpenseForm({ selectedDateKey, onCreate }: Props) {
     <form className="extra-form" onSubmit={handleSubmit}>
       <input value={amount} inputMode="decimal" placeholder="金额" onChange={(event) => setAmount(event.target.value)} />
       <select value={category} onChange={(event) => setCategory(event.target.value)}>
-        {categories.map((item) => (
+        {EXTRA_EXPENSE_CATEGORIES.map((item) => (
           <option key={item} value={item}>
             {item}
           </option>

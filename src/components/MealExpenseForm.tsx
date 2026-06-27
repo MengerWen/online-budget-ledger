@@ -5,22 +5,27 @@ import { calculateFixedMealAllowance, calculateMealDiff } from "../utils/budgetC
 import { diffClass, formatCurrency, mealDiffText } from "../utils/format";
 import { parseMoneyInput } from "../utils/validation";
 
-const meals: { key: MealKey; label: string }[] = [
-  { key: "breakfast", label: "早餐" },
-  { key: "lunch", label: "午餐" },
-  { key: "dinner", label: "晚餐" }
+const meals: { key: MealKey; label: string; noteKey: "breakfastNote" | "lunchNote" | "dinnerNote" }[] = [
+  { key: "breakfast", label: "早餐", noteKey: "breakfastNote" },
+  { key: "lunch", label: "午餐", noteKey: "lunchNote" },
+  { key: "dinner", label: "晚餐", noteKey: "dinnerNote" }
 ];
+
+type MealNotes = Record<(typeof meals)[number]["noteKey"], string>;
 
 type Props = {
   dayRecord?: DayRecord;
   budgets: BudgetPlan[];
   statuses: Map<string, BudgetStatus>;
   selectedDateKey: string;
-  onSave: (values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "note">) => Promise<void>;
+  onSave: (
+    values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "breakfastNote" | "lunchNote" | "dinnerNote" | "note">
+  ) => Promise<void>;
 };
 
 export function MealExpenseForm({ dayRecord, budgets, statuses, selectedDateKey, onSave }: Props) {
   const [values, setValues] = useState<Record<MealKey, string>>({ breakfast: "", lunch: "", dinner: "" });
+  const [mealNotes, setMealNotes] = useState<MealNotes>({ breakfastNote: "", lunchNote: "", dinnerNote: "" });
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [saving, setSaving] = useState(false);
@@ -31,22 +36,37 @@ export function MealExpenseForm({ dayRecord, budgets, statuses, selectedDateKey,
       lunch: dayRecord?.lunch === null || dayRecord?.lunch === undefined ? "" : String(dayRecord.lunch),
       dinner: dayRecord?.dinner === null || dayRecord?.dinner === undefined ? "" : String(dayRecord.dinner)
     });
+    setMealNotes({
+      breakfastNote: dayRecord?.breakfastNote ?? "",
+      lunchNote: dayRecord?.lunchNote ?? "",
+      dinnerNote: dayRecord?.dinnerNote ?? ""
+    });
     setNote(dayRecord?.note ?? "");
   }, [dayRecord, selectedDateKey]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = meals.reduce<Record<MealKey, number | null>>((acc, meal) => {
-      const result = parseMoneyInput(values[meal.key]);
-      setErrors((current) => ({ ...current, [meal.key]: result.error }));
-      acc[meal.key] = result.value;
-      return acc;
-    }, { breakfast: null, lunch: null, dinner: null });
+    const parsed = meals.reduce<Record<MealKey, number | null>>(
+      (acc, meal) => {
+        const result = parseMoneyInput(values[meal.key]);
+        setErrors((current) => ({ ...current, [meal.key]: result.error }));
+        acc[meal.key] = result.value;
+        return acc;
+      },
+      { breakfast: null, lunch: null, dinner: null }
+    );
 
     if (meals.some((meal) => parseMoneyInput(values[meal.key]).error)) return;
 
     setSaving(true);
-    await onSave({ date: selectedDateKey, ...parsed, note: note || null });
+    await onSave({
+      date: selectedDateKey,
+      ...parsed,
+      breakfastNote: mealNotes.breakfastNote.trim() || null,
+      lunchNote: mealNotes.lunchNote.trim() || null,
+      dinnerNote: mealNotes.dinnerNote.trim() || null,
+      note: note.trim() || null
+    });
     setSaving(false);
   }
 
@@ -54,15 +74,25 @@ export function MealExpenseForm({ dayRecord, budgets, statuses, selectedDateKey,
     <form className="meal-form" onSubmit={handleSubmit}>
       {meals.map((meal) => (
         <div className="meal-row" key={meal.key}>
-          <label>
-            {meal.label}
-            <input
-              value={values[meal.key]}
-              inputMode="decimal"
-              placeholder="未记录"
-              onChange={(event) => setValues((current) => ({ ...current, [meal.key]: event.target.value }))}
-            />
-          </label>
+          <div className="meal-input-grid">
+            <label>
+              {meal.label}
+              <input
+                value={values[meal.key]}
+                inputMode="decimal"
+                placeholder="未记录"
+                onChange={(event) => setValues((current) => ({ ...current, [meal.key]: event.target.value }))}
+              />
+            </label>
+            <label>
+              {meal.label}备注
+              <input
+                value={mealNotes[meal.noteKey]}
+                placeholder={`例如：${meal.label}聚餐 / 没吃${meal.label}`}
+                onChange={(event) => setMealNotes((current) => ({ ...current, [meal.noteKey]: event.target.value }))}
+              />
+            </label>
+          </div>
           {errors[meal.key] && <span className="field-error">{errors[meal.key]}</span>}
           <div className="meal-comparison">
             {budgets.map((budget) => {

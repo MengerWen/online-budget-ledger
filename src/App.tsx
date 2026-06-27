@@ -207,7 +207,9 @@ export default function App() {
     }
   }
 
-  async function handleSaveDayRecord(values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "note">) {
+  async function handleSaveDayRecord(
+    values: Pick<DayRecord, "date" | "breakfast" | "lunch" | "dinner" | "breakfastNote" | "lunchNote" | "dinnerNote" | "note">
+  ) {
     if (!session?.user.id || !ensureCanSave()) return;
     const previous = data.dayRecords;
     const optimistic: DayRecord = {
@@ -274,6 +276,9 @@ export default function App() {
         breakfast: record.breakfast,
         lunch: record.lunch,
         dinner: record.dinner,
+        breakfastNote: record.breakfastNote ?? null,
+        lunchNote: record.lunchNote ?? null,
+        dinnerNote: record.dinnerNote ?? null,
         note: record.note
       });
     }
@@ -368,7 +373,7 @@ export default function App() {
             onDeleteExpense={handleDeleteExpense}
           />
           <MonthlyStats displayedMonth={displayedMonth} budgets={data.budgets} dayRecords={data.dayRecords} extraExpenses={data.extraExpenses} />
-          <ImportExportPanel data={data} onImport={handleImport} />
+          <ImportExportPanel data={data} selectedDateKey={selectedDateKey} displayedMonth={displayedMonth} onImport={handleImport} />
         </div>
       </div>
     </main>

@@ -18,6 +18,9 @@ export type DayRecord = {
   breakfast: number | null;
   lunch: number | null;
   dinner: number | null;
+  breakfastNote: string | null;
+  lunchNote: string | null;
+  dinnerNote: string | null;
   note: string | null;
   createdAt: string;
   updatedAt: string;

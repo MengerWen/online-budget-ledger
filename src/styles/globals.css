@@ -477,6 +477,12 @@ textarea {
   padding-top: 12px;
 }
 
+.meal-input-grid {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.75fr) minmax(0, 1.25fr);
+  gap: 10px;
+}
+
 .meal-comparison {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -570,6 +576,11 @@ textarea {
 
 .backup-actions {
   justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.markdown-actions {
+  margin-top: 10px;
 }
 
 .scroll-hint {
@@ -612,6 +623,7 @@ textarea {
 
   .inline-form,
   .extra-form,
+  .meal-input-grid,
   .edit-row {
     grid-template-columns: 1fr;
   }

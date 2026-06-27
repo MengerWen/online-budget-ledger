@@ -41,6 +41,9 @@ describe("budget calculations", () => {
       breakfast: 0,
       lunch: null,
       dinner: 20,
+      breakfastNote: "没花钱",
+      lunchNote: null,
+      dinnerNote: "食堂",
       note: null,
       createdAt: "",
       updatedAt: ""
@@ -63,6 +66,9 @@ describe("budget calculations", () => {
           breakfast: 20,
           lunch: 30,
           dinner: 40,
+          breakfastNote: null,
+          lunchNote: null,
+          dinnerNote: null,
           note: null,
           createdAt: "",
           updatedAt: ""
@@ -88,6 +94,9 @@ describe("budget calculations", () => {
           breakfast: 1000,
           lunch: 1000,
           dinner: 1000,
+          breakfastNote: null,
+          lunchNote: null,
+          dinnerNote: null,
           note: null,
           createdAt: "",
           updatedAt: ""

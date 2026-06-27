@@ -1,25 +1,42 @@
-import { Download, Upload } from "lucide-react";
+import { Download, FileText, Upload } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 import type { AppData } from "../types";
 import { exportData, parseImportData } from "../services/importExportService";
+import { createDayMarkdownExport, createFullMarkdownExport, createMonthMarkdownExport } from "../services/markdownExportService";
 
 type Props = {
   data: AppData;
+  selectedDateKey: string;
+  displayedMonth: Date;
   onImport: (payload: Pick<AppData, "budgets" | "dayRecords" | "extraExpenses">) => Promise<void>;
 };
 
-export function ImportExportPanel({ data, onImport }: Props) {
+export function ImportExportPanel({ data, selectedDateKey, displayedMonth, onImport }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  function handleExport() {
-    const blob = new Blob([exportData(data)], { type: "application/json;charset=utf-8" });
+  function downloadText(filename: string, content: string, type: string) {
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `budget-ledger-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleExportJson() {
+    downloadText(`budget-ledger-${new Date().toISOString().slice(0, 10)}.json`, exportData(data), "application/json;charset=utf-8");
+  }
+
+  function handleExportMarkdown(kind: "day" | "month" | "full") {
+    const markdown =
+      kind === "day"
+        ? createDayMarkdownExport(data, selectedDateKey)
+        : kind === "month"
+          ? createMonthMarkdownExport(data, displayedMonth)
+          : createFullMarkdownExport(data);
+    downloadText(markdown.filename, markdown.content, "text/markdown;charset=utf-8");
   }
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>) {
@@ -40,11 +57,11 @@ export function ImportExportPanel({ data, onImport }: Props) {
   return (
     <section className="section-block">
       <div className="section-title">
-        <h2>备份</h2>
-        <span>JSON</span>
+        <h2>备份与导出</h2>
+        <span>JSON / Markdown</span>
       </div>
       <div className="backup-actions">
-        <button className="primary-button" type="button" onClick={handleExport}>
+        <button className="primary-button" type="button" onClick={handleExportJson}>
           <Download size={17} />
           导出 JSON
         </button>
@@ -53,6 +70,20 @@ export function ImportExportPanel({ data, onImport }: Props) {
           导入 JSON
         </button>
         <input ref={inputRef} type="file" accept="application/json" hidden onChange={handleImport} />
+      </div>
+      <div className="backup-actions markdown-actions">
+        <button className="secondary-button" type="button" onClick={() => handleExportMarkdown("day")}>
+          <FileText size={17} />
+          导出当前日 Markdown
+        </button>
+        <button className="secondary-button" type="button" onClick={() => handleExportMarkdown("month")}>
+          <FileText size={17} />
+          导出当前月 Markdown
+        </button>
+        <button className="secondary-button" type="button" onClick={() => handleExportMarkdown("full")}>
+          <FileText size={17} />
+          导出全部 Markdown
+        </button>
       </div>
       {message && <p className="form-message">{message}</p>}
     </section>

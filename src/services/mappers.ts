@@ -27,6 +27,9 @@ export function mapDayRecord(row: DayRecordRow): DayRecord {
     breakfast: row.breakfast === null ? null : Number(row.breakfast),
     lunch: row.lunch === null ? null : Number(row.lunch),
     dinner: row.dinner === null ? null : Number(row.dinner),
+    breakfastNote: row.breakfast_note ?? null,
+    lunchNote: row.lunch_note ?? null,
+    dinnerNote: row.dinner_note ?? null,
     note: row.note,
     createdAt: row.created_at,
     updatedAt: row.updated_at
