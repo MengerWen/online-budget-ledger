@@ -10,11 +10,13 @@ type Props = {
   budgets: BudgetPlan[];
   statuses: Map<string, BudgetStatus>;
   defaultBudgetId: string | null;
+  view: "ledger" | "stats";
+  onChangeView: (view: "ledger" | "stats") => void;
   onSetDefault: (budgetId: string) => void;
   onSignOut: () => void;
 };
 
-export function Dashboard({ email, currentMonth, todayTotal, budgets, statuses, defaultBudgetId, onSetDefault, onSignOut }: Props) {
+export function Dashboard({ email, currentMonth, todayTotal, budgets, statuses, defaultBudgetId, view, onChangeView, onSetDefault, onSignOut }: Props) {
   return (
     <section className="dashboard-band">
       <div className="topbar">
@@ -22,11 +24,21 @@ export function Dashboard({ email, currentMonth, todayTotal, budgets, statuses, 
           <p className="eyebrow">生活费预算记账</p>
           <h1>{currentMonth}</h1>
         </div>
-        <div className="user-cluster">
-          <span>{email}</span>
-          <button className="icon-button" type="button" onClick={onSignOut} title="退出登录" aria-label="退出登录">
-            <LogOut size={18} />
-          </button>
+        <div className="topbar-actions">
+          <nav className="view-tabs" aria-label="视图切换">
+            <button className={view === "ledger" ? "active" : ""} type="button" onClick={() => onChangeView("ledger")}>
+              记账
+            </button>
+            <button className={view === "stats" ? "active" : ""} type="button" onClick={() => onChangeView("stats")}>
+              统计
+            </button>
+          </nav>
+          <div className="user-cluster">
+            <span>{email}</span>
+            <button className="icon-button" type="button" onClick={onSignOut} title="退出登录" aria-label="退出登录">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </div>
       <div className="today-absolute">

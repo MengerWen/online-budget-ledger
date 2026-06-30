@@ -6,8 +6,8 @@ import { CalendarMonth } from "./components/CalendarMonth";
 import { Dashboard } from "./components/Dashboard";
 import { DayDetailPanel } from "./components/DayDetailPanel";
 import { ImportExportPanel } from "./components/ImportExportPanel";
-import { MonthlyStats } from "./components/MonthlyStats";
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner";
+import { StatsPage } from "./components/stats/StatsPage";
 import { isSupabaseConfigured, supabase } from "./lib/supabase";
 import { createBudget, deleteBudget, fetchBudgets, initializeDefaultBudgets, setDefaultBudget, updateBudget } from "./services/budgetService";
 import { readCachedData, saveCachedData } from "./services/cacheService";
@@ -32,6 +32,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [cacheWarning, setCacheWarning] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [view, setView] = useState<"ledger" | "stats">("ledger");
   const detailRef = useRef<HTMLElement>(null);
 
   const selectedDate = useMemo(() => parseLocalDate(selectedDateKey), [selectedDateKey]);
@@ -341,41 +342,46 @@ export default function App() {
         budgets={data.budgets}
         statuses={budgetStatuses}
         defaultBudgetId={defaultBudgetId}
+        view={view}
+        onChangeView={setView}
         onSetDefault={handleSetDefaultBudget}
         onSignOut={handleSignOut}
       />
-      <div className="main-layout">
-        <div className="left-column">
-          <BudgetPlanManager budgets={data.budgets} onCreate={handleCreateBudget} onUpdate={handleUpdateBudget} onDelete={handleDeleteBudget} />
-          <CalendarMonth
-            displayedMonth={displayedMonth}
-            selectedDateKey={selectedDateKey}
-            budgets={data.budgets}
-            dayRecords={data.dayRecords}
-            extraExpenses={data.extraExpenses}
-            calendarBudgetId={calendarBudgetId}
-            onCalendarBudgetChange={setCalendarBudgetId}
-            getStatusesForDate={getStatusesForDate}
-            onChangeMonth={setDisplayedMonth}
-            onSelectDate={handleSelectDate}
-          />
+      {view === "ledger" ? (
+        <div className="main-layout">
+          <div className="left-column">
+            <BudgetPlanManager budgets={data.budgets} onCreate={handleCreateBudget} onUpdate={handleUpdateBudget} onDelete={handleDeleteBudget} />
+            <CalendarMonth
+              displayedMonth={displayedMonth}
+              selectedDateKey={selectedDateKey}
+              budgets={data.budgets}
+              dayRecords={data.dayRecords}
+              extraExpenses={data.extraExpenses}
+              calendarBudgetId={calendarBudgetId}
+              onCalendarBudgetChange={setCalendarBudgetId}
+              getStatusesForDate={getStatusesForDate}
+              onChangeMonth={setDisplayedMonth}
+              onSelectDate={handleSelectDate}
+            />
+          </div>
+          <div className="right-column">
+            <DayDetailPanel
+              detailRef={detailRef}
+              selectedDateKey={selectedDateKey}
+              dayRecord={selectedDayRecord}
+              expenses={selectedDayExpenses}
+              budgets={data.budgets}
+              statuses={budgetStatuses}
+              onSaveDayRecord={handleSaveDayRecord}
+              onCreateExpense={handleCreateExpense}
+              onDeleteExpense={handleDeleteExpense}
+            />
+            <ImportExportPanel data={data} selectedDateKey={selectedDateKey} displayedMonth={displayedMonth} onImport={handleImport} />
+          </div>
         </div>
-        <div className="right-column">
-          <DayDetailPanel
-            detailRef={detailRef}
-            selectedDateKey={selectedDateKey}
-            dayRecord={selectedDayRecord}
-            expenses={selectedDayExpenses}
-            budgets={data.budgets}
-            statuses={budgetStatuses}
-            onSaveDayRecord={handleSaveDayRecord}
-            onCreateExpense={handleCreateExpense}
-            onDeleteExpense={handleDeleteExpense}
-          />
-          <MonthlyStats displayedMonth={displayedMonth} budgets={data.budgets} dayRecords={data.dayRecords} extraExpenses={data.extraExpenses} />
-          <ImportExportPanel data={data} selectedDateKey={selectedDateKey} displayedMonth={displayedMonth} onImport={handleImport} />
-        </div>
-      </div>
+      ) : (
+        <StatsPage data={data} />
+      )}
     </main>
   );
 }
