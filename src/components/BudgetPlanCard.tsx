@@ -16,19 +16,23 @@ export function BudgetPlanCard({ budget, status, isDefault, onSetDefault }: Prop
     <article className={`budget-card ${isDefault ? "default" : ""}`}>
       <div className="budget-card-header">
         <div>
-          <p className="eyebrow">{isDefault ? "默认预算" : "预算档位"}</p>
           <h3>{budget.name}</h3>
+          <p className="budget-monthly">月预算 {formatCurrency(budget.monthlyAmount)}</p>
         </div>
         <button className="small-button" type="button" disabled={isDefault} onClick={() => onSetDefault(budget.id)}>
-          设默认
+          {isDefault ? "默认" : "设默认"}
         </button>
       </div>
+      <div className="budget-card-primary">
+        <strong className={status ? diffClass(status.remainingDailyAllowance) : "neutral"}>
+          {status && status.remainingDailyAllowance < 0 ? "已超支" : formatCurrency(status?.remainingDailyAllowance ?? 0)}
+        </strong>
+        <span>之后每天可花</span>
+      </div>
       <div className="metric-grid">
-        <Metric label="月预算" value={formatCurrency(budget.monthlyAmount)} />
-        <Metric label="日均预算" value={formatCurrency(status?.fixedDailyAllowance ?? 0)} />
         <Metric label="本月至今已花" value={formatCurrency(status?.monthSpentToDate ?? 0)} />
         <Metric
-          label="本月至今"
+          label="进度差额"
           value={status ? formatSignedDiff(status.diffToDate) : "待计算"}
           tone={status ? diffClass(status.diffToDate) : "neutral"}
         />
@@ -37,11 +41,7 @@ export function BudgetPlanCard({ budget, status, isDefault, onSetDefault }: Prop
           value={status ? (status.remainingMonthBalance >= 0 ? formatCurrency(status.remainingMonthBalance) : `已超支 ${formatCurrency(Math.abs(status.remainingMonthBalance))}`) : "待计算"}
           tone={status ? diffClass(status.remainingMonthBalance) : "neutral"}
         />
-        <Metric
-          label="剩余日均可花"
-          value={status && status.remainingDailyAllowance < 0 ? "之后即使不花也已超支" : formatCurrency(status?.remainingDailyAllowance ?? 0)}
-          tone={status ? diffClass(status.remainingDailyAllowance) : "neutral"}
-        />
+        <Metric label="固定日均" value={formatCurrency(status?.fixedDailyAllowance ?? 0)} />
       </div>
       <div className="progress-row">
         <span>使用率 {Math.round((status?.usageRate ?? 0) * 100)}%</span>

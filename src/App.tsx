@@ -34,6 +34,7 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [view, setView] = useState<"ledger" | "stats">("ledger");
   const detailRef = useRef<HTMLElement>(null);
+  const todayKey = getTodayInLocalTimezone();
 
   const selectedDate = useMemo(() => parseLocalDate(selectedDateKey), [selectedDateKey]);
   const selectedDayRecord = data.dayRecords.find((record) => record.date === selectedDateKey);
@@ -47,12 +48,22 @@ export default function App() {
   );
 
   const todayTotal = useMemo(() => {
-    const todayKey = getTodayInLocalTimezone();
     return calculateDayTotal(
       data.dayRecords.find((record) => record.date === todayKey),
       data.extraExpenses.filter((expense) => expense.date === todayKey)
     ).total;
-  }, [data.dayRecords, data.extraExpenses]);
+  }, [data.dayRecords, data.extraExpenses, todayKey]);
+
+  const todayBudgetStatuses = useMemo(
+    () =>
+      calculateAllBudgetsStatus({
+        budgets: data.budgets,
+        dayRecords: data.dayRecords,
+        extraExpenses: data.extraExpenses,
+        selectedDate: parseLocalDate(todayKey)
+      }),
+    [data.budgets, data.dayRecords, data.extraExpenses, todayKey]
+  );
 
   useEffect(() => {
     function handleOnline() {
@@ -337,10 +348,10 @@ export default function App() {
       )}
       <Dashboard
         email={session.user.email ?? "已登录用户"}
-        currentMonth={formatChineseDate(displayedMonth).replace(/\d+日.*/, "")}
+        currentMonth={formatChineseDate(parseLocalDate(todayKey)).replace(/\d+日.*/, "")}
         todayTotal={todayTotal}
         budgets={data.budgets}
-        statuses={budgetStatuses}
+        statuses={todayBudgetStatuses}
         defaultBudgetId={defaultBudgetId}
         view={view}
         onChangeView={setView}
@@ -348,37 +359,41 @@ export default function App() {
         onSignOut={handleSignOut}
       />
       {view === "ledger" ? (
-        <div className="main-layout">
-          <div className="left-column">
-            <BudgetPlanManager budgets={data.budgets} onCreate={handleCreateBudget} onUpdate={handleUpdateBudget} onDelete={handleDeleteBudget} />
-            <CalendarMonth
-              displayedMonth={displayedMonth}
-              selectedDateKey={selectedDateKey}
-              budgets={data.budgets}
-              dayRecords={data.dayRecords}
-              extraExpenses={data.extraExpenses}
-              calendarBudgetId={calendarBudgetId}
-              onCalendarBudgetChange={setCalendarBudgetId}
-              getStatusesForDate={getStatusesForDate}
-              onChangeMonth={setDisplayedMonth}
-              onSelectDate={handleSelectDate}
-            />
+        <>
+          <div className="main-layout">
+            <div className="left-column">
+              <CalendarMonth
+                displayedMonth={displayedMonth}
+                selectedDateKey={selectedDateKey}
+                budgets={data.budgets}
+                dayRecords={data.dayRecords}
+                extraExpenses={data.extraExpenses}
+                calendarBudgetId={calendarBudgetId}
+                onCalendarBudgetChange={setCalendarBudgetId}
+                getStatusesForDate={getStatusesForDate}
+                onChangeMonth={setDisplayedMonth}
+                onSelectDate={handleSelectDate}
+              />
+            </div>
+            <div className="right-column">
+              <DayDetailPanel
+                detailRef={detailRef}
+                selectedDateKey={selectedDateKey}
+                dayRecord={selectedDayRecord}
+                expenses={selectedDayExpenses}
+                budgets={data.budgets}
+                statuses={budgetStatuses}
+                onSaveDayRecord={handleSaveDayRecord}
+                onCreateExpense={handleCreateExpense}
+                onDeleteExpense={handleDeleteExpense}
+              />
+            </div>
           </div>
-          <div className="right-column">
-            <DayDetailPanel
-              detailRef={detailRef}
-              selectedDateKey={selectedDateKey}
-              dayRecord={selectedDayRecord}
-              expenses={selectedDayExpenses}
-              budgets={data.budgets}
-              statuses={budgetStatuses}
-              onSaveDayRecord={handleSaveDayRecord}
-              onCreateExpense={handleCreateExpense}
-              onDeleteExpense={handleDeleteExpense}
-            />
+          <div className="utility-layout">
+            <BudgetPlanManager budgets={data.budgets} onCreate={handleCreateBudget} onUpdate={handleUpdateBudget} onDelete={handleDeleteBudget} />
             <ImportExportPanel data={data} selectedDateKey={selectedDateKey} displayedMonth={displayedMonth} onImport={handleImport} />
           </div>
-        </div>
+        </>
       ) : (
         <StatsPage data={data} />
       )}

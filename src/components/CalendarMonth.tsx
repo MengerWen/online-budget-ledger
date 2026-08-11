@@ -40,9 +40,10 @@ export function CalendarMonth({
   return (
     <section className="section-block calendar-section">
       <div className="calendar-toolbar">
-        <div>
-          <p className="eyebrow">月历</p>
-          <h2>{displayedMonth.getFullYear()}年{displayedMonth.getMonth() + 1}月</h2>
+        <div className="calendar-title-copy">
+          <p className="eyebrow">Monthly ledger · 月度账页</p>
+          <h2>这个月，钱花在了哪一天</h2>
+          <span>{displayedMonth.getFullYear()} / {String(displayedMonth.getMonth() + 1).padStart(2, "0")}</span>
         </div>
         <div className="toolbar-actions">
           <button className="icon-button" type="button" onClick={() => shiftMonth(-1)} title="上个月" aria-label="上个月">
@@ -68,8 +69,8 @@ export function CalendarMonth({
         </div>
       </div>
       <div className="calendar-grid header">
-        {weekdays.map((day) => (
-          <span key={day}>{day}</span>
+        {weekdays.map((day, index) => (
+          <span key={day} className={index >= 5 ? "weekend-label" : ""}>{day}</span>
         ))}
       </div>
       <div className="calendar-grid">

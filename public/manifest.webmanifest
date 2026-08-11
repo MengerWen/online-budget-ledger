@@ -4,8 +4,8 @@
   "description": "记录三餐和额外花销，按多档生活费预算计算节约与超支。",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f6f3",
-  "theme_color": "#111111",
+  "background_color": "#151714",
+  "theme_color": "#151714",
   "icons": [
     {
       "src": "/icons/icon.svg",

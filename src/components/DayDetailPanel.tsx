@@ -41,11 +41,14 @@ export function DayDetailPanel({
     <section className="section-block day-detail" ref={detailRef}>
       <div className="section-title">
         <div>
-          <p className="eyebrow">日期详情</p>
+          <p className="eyebrow">Today's ledger · 当日账页</p>
           <h2>{formatChineseDate(date)}</h2>
           <span className="muted">{lunar.full}{isFutureDate(selectedDateKey) ? " / 未来日期" : ""}</span>
         </div>
-        <CalendarCheck size={28} />
+        <div className="date-stamp" role="img" aria-label={`${date.getDate()}日`}>
+          <CalendarCheck size={14} />
+          <strong>{String(date.getDate()).padStart(2, "0")}</strong>
+        </div>
       </div>
       <MealExpenseForm dayRecord={dayRecord} budgets={budgets} statuses={statuses} selectedDateKey={selectedDateKey} onSave={onSaveDayRecord} />
       <ExtraExpenseList selectedDateKey={selectedDateKey} expenses={expenses} onCreate={onCreateExpense} onDelete={onDeleteExpense} />

@@ -1,13 +1,13 @@
 export const CHART = {
-  ink: "#23211C",
-  muted: "#8C887E",
-  line: "#E7E4DC",
-  paper: "#F6F5F1",
-  panel: "#FFFFFF",
-  green: "#5E7C6A",
-  red: "#A85A50",
-  blue: "#5B6B82",
-  orange: "#B08A4F",
-  categorical: ["#6E7F76", "#A88F6B", "#8A7B86", "#7E8AA0", "#9C7E72", "#7C8C7A", "#B0A07A", "#86807A"],
-  fontFamily: '"Libre Baskerville","Noto Serif SC",serif'
+  ink: "#17232E",
+  muted: "#766F63",
+  line: "#CCC3B2",
+  paper: "#F3EEDF",
+  panel: "#F9F5EA",
+  green: "#236D4B",
+  red: "#D83B29",
+  blue: "#315B8A",
+  orange: "#C78B28",
+  categorical: ["#236D4B", "#D09535", "#8C655E", "#315B8A", "#7A5C86", "#4E7B71", "#B27248", "#66655F"],
+  fontFamily: '"Noto Sans SC","PingFang SC",sans-serif'
 };
