@@ -5,6 +5,7 @@ import { BudgetPlanManager } from "./components/BudgetPlanManager";
 import { CalendarMonth } from "./components/CalendarMonth";
 import { Dashboard } from "./components/Dashboard";
 import { DayDetailPanel } from "./components/DayDetailPanel";
+import { FinanceImportPanel } from './components/FinanceImportPanel';
 import { ImportExportPanel } from "./components/ImportExportPanel";
 import { NetworkStatusBanner } from "./components/NetworkStatusBanner";
 import { StatsPage } from "./components/stats/StatsPage";
@@ -391,6 +392,7 @@ export default function App() {
           </div>
           <div className="utility-layout">
             <BudgetPlanManager budgets={data.budgets} onCreate={handleCreateBudget} onUpdate={handleUpdateBudget} onDelete={handleDeleteBudget} />
+            <FinanceImportPanel data={data} onImported={() => session ? loadUserData(session.user.id) : Promise.resolve()} />
             <ImportExportPanel data={data} selectedDateKey={selectedDateKey} displayedMonth={displayedMonth} onImport={handleImport} />
           </div>
         </>

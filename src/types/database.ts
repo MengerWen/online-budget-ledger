@@ -3,6 +3,16 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      finance_postings: {
+        Row: { id: string; user_id: string; canonical_id: string; date: string; amount_cents: number; direction: string; target: string; category: string; payload: Json; refund_of: string | null; created_at: string };
+        Insert: { user_id: string; canonical_id: string; date: string; amount_cents: number; direction: string; target: string; category: string; payload: Json; refund_of?: string };
+        Update: Record<string, never>;
+      };
+      finance_keys: {
+        Row: { user_id: string; identity_key: string; posting_id: string; payload: Json };
+        Insert: { user_id: string; identity_key: string; posting_id: string; payload: Json };
+        Update: Record<string, never>;
+      };
       budgets: {
         Row: {
           id: string;
@@ -118,7 +128,7 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: { import_finance_batch: { Args: { p_entries: Json }; Returns: Json } };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
