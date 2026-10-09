@@ -10,6 +10,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [targets, setTargets] = useState<Record<string, string>>({});
   const [refunds, setRefunds] = useState<Record<string, string>>({});
+  const [dateConfirmations, setDateConfirmations] = useState<Record<string, string>>({});
   const [postings, setPostings] = useState<FinancePosting[]>([]);
   const [known, setKnown] = useState<Record<string, string>>({});
   const [message, setMessage] = useState('');
@@ -30,7 +31,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
     try {
       if (file.size > 20 * 1024 * 1024) throw new Error('文件超过 20 MiB。');
       const items = parseFinanceFile(await file.text());
-      await history(); setEntries(items);setSelected(new Set());setTargets({});setPage(0);
+      await history(); setEntries(items);setSelected(new Set());setTargets({});setDateConfirmations({});setPage(0);
       setMessage(`已读取 ${items.length} 条。请核对日期、重复通知及已手工记录的支出，再选择入账。`);
     } catch (e) { setMessage((e as Error).message); }
   }
@@ -39,6 +40,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
     try {
       const group = entries.filter(e => selected.has(e.id)); const combined = mergeEntries(group);
       setEntries(old => [combined, ...old.filter(e => !selected.has(e.id))]);setSelected(new Set([combined.id]));setPage(0);
+      setDateConfirmations({});
       setMessage('已合并来源。请再核对入账类别。');
     } catch(e) { setMessage((e as Error).message); }
   }
@@ -50,12 +52,14 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       const chosen = entries.filter(e => selected.has(e.id));
       if (!chosen.length || chosen.some(e => !eligible(e))) throw new Error('请只选择金额和成功状态明确的支出或退款。');
       const bookings: Booking[] = chosen.map(e => {
+        if (e.paymentDateReviewRequired && dateConfirmations[e.id] !== e.date) throw new Error('请核对实付款的实际扣款日期，并勾选日期确认。');
+        const reviewed = { ...e, ...(e.paymentDateReviewRequired ? {paymentDateConfirmedFor:e.date} : {}) };
         const target = targets[e.id]; if (!target) throw new Error('每条选中流水都需要选择入账方式。');
         if (e.evidenceOnly && !target.startsWith('link:') && !target.startsWith('manual:')) throw new Error('订单列表只可关联已经记录的实际支出；或先与扣款通知合并。');
         if (e.direction === 'refund' && !refunds[e.id]) throw new Error('退款需要关联已入账的原支出。');
-        if (target.startsWith('link:')) return { ...e, target: 'existing', linkTo: target.slice(5) };
-        if (target.startsWith('manual:')) return { ...e, target: 'existing', existingExpenseId: target.slice(7) };
-        return { ...e, target: target.startsWith('extra:') ? 'extra' : target,
+        if (target.startsWith('link:')) return { ...reviewed, target: 'existing', linkTo: target.slice(5) };
+        if (target.startsWith('manual:')) return { ...reviewed, target: 'existing', existingExpenseId: target.slice(7) };
+        return { ...reviewed, target: target.startsWith('extra:') ? 'extra' : target,
           category: target.startsWith('extra:') ? target.slice(6) : '餐饮', refundOf: refunds[e.id] };
       });
       const result = await bookFinance(bookings); saved=result;
@@ -82,10 +86,11 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
     {visible.map(e => <article className="finance-entry" key={e.id}>
       <label><input type="checkbox" checked={selected.has(e.id)} disabled={busy || !eligible(e)} onChange={() => toggle(e.id)} /> {e.sourceName} · {e.title} · {e.amountCents === null ? '金额缺失' : `¥${(e.amountCents / 100).toFixed(2)}`} {isKnown(e) ? '（已入账）' : ''}</label>
       <div>{e.merchant || '商户未提供'} · {({expense:'支出',refund:'退款',income:'收入',transfer:'资金转移',unknown:'收支待核对'} as Record<string,string>)[e.direction] ?? e.direction} · {({succeeded:'已完成',info:'仅供查看',review:'状态待核对'} as Record<string,string>)[e.status] ?? e.status}</div>
-      <label>记账日期 <input type="date" value={e.date} disabled={isKnown(e) || busy} onChange={event => setEntries(old => old.map(item => item.id === e.id ? {...item,date:event.target.value} : item))} /></label>
-      <div>{e.occurredAt ? `交易时间 ${e.occurredAt}` : `仅有通知时间 ${e.receivedAt}`}</div>
+      <label>记账日期 <input type="date" value={e.date} disabled={isKnown(e) || busy} onChange={event => { setDateConfirmations(old => ({...old,[e.id]:''}));setEntries(old => old.map(item => item.id === e.id ? {...item,date:event.target.value} : item)); }} /></label>
+      <div>{e.occurredAt ? `交易时间 ${e.occurredAt}` : e.orderedAt ? `采集时间 ${e.receivedAt}；支付时间未提供` : `仅有通知时间 ${e.receivedAt}`}</div>
       {e.orderedAt && <div>下单时间 {e.orderedAt} · {e.paymentMethod || '支付方式未提供'}</div>}
       {!!e.reviewReasons.length && <p>{e.reviewReasons.join('；')}</p>}
+      {eligible(e) && e.paymentDateReviewRequired && <label><input type="checkbox" checked={dateConfirmations[e.id] === e.date} disabled={busy} onChange={event => setDateConfirmations(old => ({...old,[e.id]:event.target.checked ? e.date : ''}))} /> 已核对实际扣款日期：{e.date}</label>}
       {!!possibleDuplicates(e, entries).length && <p>同日、同额的其他来源：{possibleDuplicates(e, entries).map(x => x.sourceName).join('、')}。请核对是否同一笔。</p>}
       {eligible(e) && <label>入账方式 <select value={targets[e.id] ?? ''} disabled={busy} onChange={event => setTargets(old => ({...old,[e.id]:event.target.value}))}>
         <option value="">请选择，或不勾选这条</option>

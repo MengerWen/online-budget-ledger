@@ -25,4 +25,10 @@ describe('财务导入', () => {
     expect(mergeEntries([order,one]).evidenceOnly).toBe(false);
     expect(mergeEntries([order,one]).identityKeys).toContain('order:jd:a:o');
   });
+  it('合并有交易时间的真实扣款后不再要求人工确认订单日期',()=>{
+    const receipt={...one,paymentDateReviewRequired:true};
+    expect(mergeEntries([receipt,{...one,id:'second'}]).paymentDateReviewRequired).toBe(true);
+    expect(mergeEntries([receipt,{...one,id:'payment',occurredAt:'2026-10-07T12:00:00+08:00'}]).paymentDateReviewRequired).toBe(false);
+    expect(()=>parseFinanceFile(JSON.stringify({format:'dating-finance/v1',entries:[{...receipt,paymentDateReviewRequired:'yes'}]}))).toThrow();
+  });
 });

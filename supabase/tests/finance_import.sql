@@ -50,6 +50,20 @@ begin
   exception when others then rejected:=sqlerrm='订单列表只能补充已经记录的实际支出'; end;
   assert rejected, '订单列表被当作实际扣款';
 
+  rejected:=false;
+  begin
+    perform public.import_finance_batch(jsonb_build_array(entry||jsonb_build_object('id','__finance_test_receipt__','paymentDateReviewRequired',true,'identityKeys',jsonb_build_array('__finance_test_receipt_key__'))));
+  exception when others then rejected:=sqlerrm='请先核对实付款的实际扣款日期'; end;
+  assert rejected, '实付详情未核对扣款日期仍可入账';
+  rejected:=false;
+  begin
+    perform public.import_finance_batch(jsonb_build_array(entry||jsonb_build_object('id','__finance_test_receipt__','paymentDateReviewRequired',true,'paymentDateConfirmedFor','2000-01-02','identityKeys',jsonb_build_array('__finance_test_receipt_key__'))));
+  exception when others then rejected:=sqlerrm='请先核对实付款的实际扣款日期'; end;
+  assert rejected, '修改日期后仍接受旧确认';
+  result := public.import_finance_batch(jsonb_build_array(entry||jsonb_build_object('id','__finance_test_receipt__','paymentDateReviewRequired',true,'paymentDateConfirmedFor','2000-01-01','identityKeys',jsonb_build_array('__finance_test_receipt_key__'))));
+  assert result->>'added'='1', '确认扣款日期后未入账';
+  assert (select payload->>'paymentDateConfirmedFor' from public.finance_postings where canonical_id='__finance_test_receipt__')='2000-01-01', '未保留日期核对记录';
+
   perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
   assert not exists(select 1 from public.finance_postings where id=original_id), 'RLS 未隔离其他用户';
   rejected:=false;

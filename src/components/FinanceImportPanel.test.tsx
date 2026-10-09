@@ -37,6 +37,23 @@ describe('财务预览入账',()=>{
     expect(screen.queryByRole('option',{name:'计入午餐'})).not.toBeInTheDocument();
     expect(screen.queryByRole('option',{name:'额外支出：其他'})).not.toBeInTheDocument();
   });
+  it('实付详情必须核对扣款日期，改日期后需重新确认',async()=>{
+    const user=await load({...base,occurredAt:null,paymentDateReviewRequired:true} as unknown as typeof base);
+    const choices=screen.getAllByRole('checkbox');
+    await user.click(choices[0]);
+    await user.selectOptions(screen.getByLabelText('入账方式'),'lunch');
+    await user.click(screen.getByRole('button',{name:'核对完成，入账 1 条'}));
+    await screen.findByText(/请核对实付款的实际扣款日期/);
+    expect(bookFinance).not.toHaveBeenCalled();
+    await user.click(choices[1]);
+    const date=screen.getByLabelText('记账日期');
+    await user.clear(date);await user.type(date,'2000-01-02');
+    expect(choices[1]).not.toBeChecked();
+    await user.click(choices[1]);
+    await user.click(screen.getByRole('button',{name:'核对完成，入账 1 条'}));
+    await screen.findByText('入账 1 条，已有流水 0 条。');
+    expect(bookFinance).toHaveBeenCalledWith([expect.objectContaining({date:'2000-01-02',paymentDateConfirmedFor:'2000-01-02',occurredAt:null,target:'lunch'})]);
+  });
   it('未取得已有来源时不允许入账',async()=>{
     vi.mocked(fetchFinanceHistory).mockRejectedValueOnce(new Error('连接失败')).mockRejectedValueOnce(new Error('连接失败'));
     await load(base,/^连接失败$/);

@@ -8,6 +8,7 @@ export type FinanceEntry = {
   merchant: string; category: string; reviewReasons: string[];
   identityKeys: string[]; sources: Record<string, unknown>[];
   evidenceOnly?: boolean; orderedAt?: string; paymentMethod?: string | null;
+  paymentDateReviewRequired?: boolean;
 };
 export type FinancePosting = {
   id: string; canonical_id: string; date: string; amount_cents: number;
@@ -15,6 +16,7 @@ export type FinancePosting = {
 };
 export type Booking = FinanceEntry & {
   target: string; refundOf?: string; linkTo?: string; existingExpenseId?: string;
+  paymentDateConfirmedFor?: string;
 };
 
 export function parseFinanceFile(text: string): FinanceEntry[] {
@@ -36,6 +38,7 @@ export function parseFinanceFile(text: string): FinanceEntry[] {
         !Array.isArray(e.reviewReasons) || e.reviewReasons.some(r => typeof r !== 'string') ||
         typeof e.currency !== 'string' || typeof e.status !== 'string' || typeof e.provider !== 'string' || typeof e.sourceName !== 'string' ||
         (e.evidenceOnly !== undefined && typeof e.evidenceOnly !== 'boolean') ||
+        (e.paymentDateReviewRequired !== undefined && typeof e.paymentDateReviewRequired !== 'boolean') ||
         typeof e.title !== 'string' || typeof e.merchant !== 'string' || typeof e.category !== 'string') {
       throw new Error('流水的金额、日期、来源或身份字段不符合要求。');
     }
@@ -52,6 +55,7 @@ export function mergeEntries(entries: FinanceEntry[]): FinanceEntry {
   }
   return { ...first, title: entries.map(e => e.title).join(' / '),
     evidenceOnly: entries.every(e => e.evidenceOnly === true),
+    paymentDateReviewRequired: !entries.some(e => !e.evidenceOnly && e.occurredAt) && entries.some(e => e.paymentDateReviewRequired === true),
     occurredAt: entries.find(e => !e.evidenceOnly && e.occurredAt)?.occurredAt ?? first.occurredAt,
     merchant: entries.find(e => e.merchant)?.merchant ?? '',
     identityKeys: [...new Set(entries.flatMap(e => e.identityKeys))],
