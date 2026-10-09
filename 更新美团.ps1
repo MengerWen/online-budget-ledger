@@ -1,4 +1,4 @@
-param([string]$DatingRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'Dating'), [string]$Folder, [switch]$SkipCapture)
+param([string]$DatingRoot = (Join-Path (Split-Path -Parent $PSScriptRoot) 'Dating'), [string]$Folder, [switch]$SkipCapture, [switch]$Foreground)
 $ErrorActionPreference = 'Stop'
 $entry = Join-Path $DatingRoot '采集美团账单.ps1'
 if (-not (Test-Path -LiteralPath $entry -PathType Leaf)) {
@@ -7,5 +7,6 @@ if (-not (Test-Path -LiteralPath $entry -PathType Leaf)) {
 $forward = @{}
 if ($Folder) { $forward.Folder = $Folder }
 if ($SkipCapture) { $forward.SkipCapture = $true }
+if ($Foreground) { $forward.Foreground = $true }
 & $entry @forward
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
