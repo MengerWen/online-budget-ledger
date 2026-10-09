@@ -22,6 +22,14 @@ async function load(entry=base, expected:RegExp=/已读取 1 条/) {
   return user;
 }
 describe('财务预览入账',()=>{
+  it('显示 AI 建议和人工分类，采用后仍需勾选入账',async()=>{
+    const user=await load({...base,aiSuggestion:{category:'餐饮',confidence:'medium',reason:'餐厅消费',question:'核对用途',evidenceIds:['synthetic']},reviewedBooking:{category:'交通',explanation:'已核对为车费',date:'2000-01-02',dateConfirmed:true,disposition:'confirm'}} as typeof base);
+    expect(screen.getByText(/AI 建议：餐饮/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button',{name:'采用已核对分类和日期'}));
+    expect(screen.getByLabelText('入账方式')).toHaveValue('extra:交通');
+    expect(screen.getByLabelText('记账日期')).toHaveValue('2000-01-02');
+    expect(bookFinance).not.toHaveBeenCalled();expect(screen.getByRole('checkbox')).not.toBeChecked();
+  });
   it('默认不选择，核对类别后仅提交所选记录',async()=>{
     const user=await load();
     expect(screen.getByRole('checkbox')).not.toBeChecked();

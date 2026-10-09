@@ -1,5 +1,6 @@
 import { requireSupabase } from '../lib/supabase';
 import type { Json } from '../types/database';
+import { EXTRA_EXPENSE_CATEGORIES } from '../utils/extraCategories';
 
 export type FinanceEntry = {
   id: string; provider: string; sourceName: string; title: string;
@@ -9,6 +10,8 @@ export type FinanceEntry = {
   identityKeys: string[]; sources: Record<string, unknown>[];
   evidenceOnly?: boolean; orderedAt?: string; paymentMethod?: string | null;
   paymentDateReviewRequired?: boolean;
+  aiSuggestion?: {category: string; confidence: string; reason: string; question: string; evidenceIds: string[]} | null;
+  reviewedBooking?: {category: string; explanation: string; date: string; dateConfirmed: boolean; disposition: string} | null;
 };
 export type FinancePosting = {
   id: string; canonical_id: string; date: string; amount_cents: number;
@@ -43,6 +46,17 @@ export function parseFinanceFile(text: string): FinanceEntry[] {
       throw new Error('流水的金额、日期、来源或身份字段不符合要求。');
     }
     ids.add(e.id);
+    if (e.aiSuggestion && (!EXTRA_EXPENSE_CATEGORIES.some(c => c === e.aiSuggestion?.category) ||
+        typeof e.aiSuggestion.reason !== 'string' || typeof e.aiSuggestion.question !== 'string' ||
+        !['high','medium','low'].includes(e.aiSuggestion.confidence) || !Array.isArray(e.aiSuggestion.evidenceIds) || e.aiSuggestion.evidenceIds.some(id => typeof id !== 'string'))) {
+      throw new Error('AI 建议的类别或证据字段无效。');
+    }
+    if (e.reviewedBooking && (!EXTRA_EXPENSE_CATEGORIES.some(c => c === e.reviewedBooking?.category) ||
+        typeof e.reviewedBooking.explanation !== 'string' || typeof e.reviewedBooking.dateConfirmed !== 'boolean' ||
+        !['confirm','ignore'].includes(e.reviewedBooking.disposition) || !/^\d{4}-\d{2}-\d{2}$/.test(e.reviewedBooking.date) ||
+        Number.isNaN(Date.parse(e.reviewedBooking.date)) || new Date(e.reviewedBooking.date).toISOString().slice(0,10) !== e.reviewedBooking.date)) {
+      throw new Error('Dating 核对结果的类别或日期无效。');
+    }
     return e;
   });
 }
