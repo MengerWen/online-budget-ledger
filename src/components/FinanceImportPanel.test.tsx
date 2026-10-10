@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FinanceImportPanel } from './FinanceImportPanel';
 import { bookFinance, fetchFinanceHistory } from '../services/financeImportService';
+import { restoreLocalFinanceFeed } from '../services/localFinanceFeed';
+vi.mock('../services/localFinanceFeed',()=>({connectLocalFinanceFeed:vi.fn(),restoreLocalFinanceFeed:vi.fn(async()=>undefined)}));
 vi.mock('../services/financeImportService', async importOriginal => ({
   ...await importOriginal<typeof import('../services/financeImportService')>(),
   fetchFinanceHistory: vi.fn(async () => ({postings:[],keys:[]})),
@@ -22,6 +24,33 @@ async function load(entry=base, expected:RegExp=/已读取 1 条/) {
   return user;
 }
 describe('财务预览入账',()=>{
+  it('连接文件自动恢复，入账前发现新证据时阻止提交旧内容',async()=>{
+    let text=JSON.stringify({format:'dating-finance/v1',generatedAt:'2000-01-01T12:00:00+08:00',entries:[base]});
+    const handle={getFile:vi.fn(async()=>({size:text.length,text:async()=>text}) as File),queryPermission:vi.fn(async()=>'granted')};
+    vi.mocked(restoreLocalFinanceFeed).mockResolvedValueOnce(handle);
+    const user=userEvent.setup();
+    render(<FinanceImportPanel data={{budgets:[],dayRecords:[],extraExpenses:[],settings:null}} onImported={vi.fn(async()=>{})} />);
+    await screen.findByText(/已自动读取 1 条/);
+    expect(screen.getByText(/来源文件更新：2000-01-01T12:00:00/)).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox'));await user.selectOptions(screen.getByLabelText('入账方式'),'lunch');
+    text=JSON.stringify({format:'dating-finance/v1',entries:[{...base,title:'更新后的支付证据'}]});
+    await user.click(screen.getByRole('button',{name:'核对完成，入账 1 条'}));
+    await screen.findByText(/未完成入账：交易证据已更新/);
+    expect(bookFinance).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox')).toBeChecked();
+  });
+  it('同步文件读取失败时保留当前核对并停止入账',async()=>{
+    const text=JSON.stringify({format:'dating-finance/v1',entries:[base]});
+    const getFile=vi.fn(async()=>({size:text.length,text:async()=>text}) as File);
+    vi.mocked(restoreLocalFinanceFeed).mockResolvedValueOnce({getFile,queryPermission:vi.fn(async()=>'granted')});
+    const user=userEvent.setup();
+    render(<FinanceImportPanel data={{budgets:[],dayRecords:[],extraExpenses:[],settings:null}} onImported={vi.fn(async()=>{})} />);
+    await screen.findByText(/已自动读取 1 条/);
+    await user.click(screen.getByRole('checkbox'));await user.selectOptions(screen.getByLabelText('入账方式'),'lunch');
+    getFile.mockRejectedValueOnce(new Error('读取权限过期'));
+    await user.click(screen.getByRole('button',{name:'核对完成，入账 1 条'}));
+    await screen.findByText('未完成入账：读取权限过期');expect(bookFinance).not.toHaveBeenCalled();
+  });
   it('接收三餐分类并把详细备注提交到对应一餐',async()=>{
     const entry={...base,bookingNote:'商户：合成商户\n商品：米饭 / 鸡肉\n下单时间：2000-01-01 12:01:23',reviewedBooking:{category:'午餐',explanation:'和同学吃饭',date:base.date,dateConfirmed:true,disposition:'confirm'}};
     const user=await load(entry as typeof base);

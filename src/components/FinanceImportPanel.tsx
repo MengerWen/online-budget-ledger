@@ -21,6 +21,8 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
   const [page, setPage] = useState(0);
   const [feedConnected, setFeedConnected] = useState(false);
   const [feedChanged, setFeedChanged] = useState(false);
+  const [feedReadAt, setFeedReadAt] = useState('');
+  const [feedGeneratedAt, setFeedGeneratedAt] = useState('');
   const feed = useRef<Awaited<ReturnType<typeof connectLocalFinanceFeed>>>();
   const feedText = useRef('');
   const workInProgress = useRef(false);
@@ -39,9 +41,10 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       feed.current = handle;setFeedConnected(true);await readFeed();
     }).catch(e => { if (active) setMessage((e as Error).message); });
     const check = () => { if (feed.current && !document.hidden) void readFeed(); };
-    const timer = window.setInterval(check, 3600000);
+    const timer = window.setInterval(check, 60000);
     window.addEventListener('focus', check);
-    return () => { active = false;window.clearInterval(timer);window.removeEventListener('focus', check); };
+    document.addEventListener('visibilitychange', check);
+    return () => { active = false;window.clearInterval(timer);window.removeEventListener('focus', check);document.removeEventListener('visibilitychange', check); };
   }, []);
   async function readFeed(force = false) {
     try {
@@ -51,6 +54,8 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       const text = await file.text();
       const parsed = parseFinanceFile(text);
       const signature = JSON.stringify(parsed);
+      setFeedReadAt(new Date().toLocaleString('zh-CN'));
+      setFeedGeneratedAt((JSON.parse(text) as {generatedAt?:string}).generatedAt || '文件未提供');
       if (signature === feedText.current) return;
       if (!force && workInProgress.current) { setFeedChanged(true);setMessage('本地财务证据已更新，请重新读取后继续核对。');return; }
       await history();setEntries(parsed);setSelected(new Set());setTargets({});setDateConfirmations({});setPage(0);setFeedChanged(false);feedText.current = signature;
@@ -87,6 +92,13 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
     try {
       if (!navigator.onLine || !historyReady) throw new Error('联网并取得已有流水后才能入账。');
       if (feedChanged) throw new Error('交易证据已更新，请先重新读取再核对。');
+      if (feed.current) {
+        const file = await feed.current.getFile();
+        if (file.size > 20 * 1024 * 1024) throw new Error('财务文件超过 20 MiB。');
+        if (JSON.stringify(parseFinanceFile(await file.text())) !== feedText.current) {
+          setFeedChanged(true);throw new Error('交易证据已更新，请先重新读取再核对。');
+        }
+      }
       const chosen = entries.filter(e => selected.has(e.id));
       if (!chosen.length || chosen.some(e => !eligible(e))) throw new Error('请只选择金额和成功状态明确的支出或退款。');
       const bookings: Booking[] = chosen.map(e => {
@@ -124,7 +136,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       <input ref={input} type="file" accept=".json,application/json" hidden onChange={e => { void load(e.target.files?.[0]);e.target.value=''; }} />
     </div>
     <p role="status">{message}</p>
-    {feedConnected && <p>已连接本地财务文件：此页打开时每小时读取，回到页面也会检查。关闭页面期间 Dating 继续更新文件；入账仍由你确认。</p>}
+    {feedConnected ? <p>已连接本地财务文件，每分钟检查更新，回到页面时也检查。最近读取：{feedReadAt || '等待读取'}；来源文件更新：{feedGeneratedAt || '等待读取'}。Dating 每小时采集证据，入账仍由你确认。</p> : <p>尚未连接自动同步文件。点击“连接本地每小时文件”，选择 Dating 的“资料/财务导出/记账待核对.json”，即可持续读取；下载或单次选择的文件不会自动更新。</p>}
     {visible.map(e => <article className="finance-entry" key={e.id}>
       <label><input type="checkbox" checked={selected.has(e.id)} disabled={busy || !eligible(e)} onChange={() => toggle(e.id)} /> {e.sourceName} · {e.title} · {e.amountCents === null ? '金额缺失' : `¥${(e.amountCents / 100).toFixed(2)}`} {isKnown(e) ? '（已入账）' : ''}</label>
       <div>{e.merchant || '商户未提供'} · {({expense:'支出',refund:'退款',income:'收入',transfer:'资金转移',unknown:'收支待核对'} as Record<string,string>)[e.direction] ?? e.direction} · {({succeeded:'已完成',info:'仅供查看',review:'状态待核对'} as Record<string,string>)[e.status] ?? e.status}</div>
