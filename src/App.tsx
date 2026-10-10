@@ -105,6 +105,33 @@ export default function App() {
     void loadUserData(session.user.id);
   }, [session?.user.id]);
 
+  useEffect(() => {
+    const userId = session?.user.id;
+    if (!userId) return;
+    let stopped = false, refreshing = false;
+    async function refreshFinancialRecords() {
+      if (stopped || refreshing || document.hidden || !navigator.onLine || document.querySelector('form[data-dirty="true"]')) return;
+      refreshing = true;
+      try {
+        const [days, extras] = await Promise.all([fetchDayRecords(userId!), fetchExtraExpenses(userId!)]);
+        if (stopped || days.data === null || extras.data === null || document.querySelector('form[data-dirty="true"]')) return;
+        const freshDays = days.data, freshExtras = extras.data;
+        setData(current => {
+          const dayRecords = freshDays.map(record => current.dayRecords.find(old => old.id === record.id && JSON.stringify(old) === JSON.stringify(record)) ?? record);
+          if (JSON.stringify(current.dayRecords) === JSON.stringify(dayRecords) && JSON.stringify(current.extraExpenses) === JSON.stringify(freshExtras)) return current;
+          const next = { ...current, dayRecords, extraExpenses: freshExtras };
+          saveCachedData(userId!, next);
+          return next;
+        });
+      } finally { refreshing = false; }
+    }
+    const timer = window.setInterval(() => { void refreshFinancialRecords(); }, 60000);
+    const refresh = () => { void refreshFinancialRecords(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => { stopped = true; clearInterval(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
+  }, [session?.user.id]);
+
   async function loadUserData(userId: string) {
     setLoading(true);
     setCacheWarning(null);

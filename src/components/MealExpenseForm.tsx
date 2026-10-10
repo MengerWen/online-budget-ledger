@@ -29,6 +29,7 @@ export function MealExpenseForm({ dayRecord, budgets, statuses, selectedDateKey,
   const [note, setNote] = useState("");
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [saving, setSaving] = useState(false);
+  const dirty = meals.some(meal => values[meal.key] !== (dayRecord?.[meal.key] == null ? '' : String(dayRecord[meal.key])) || mealNotes[meal.noteKey] !== (dayRecord?.[meal.noteKey] ?? '')) || note !== (dayRecord?.note ?? '');
 
   useEffect(() => {
     setValues({
@@ -71,7 +72,7 @@ export function MealExpenseForm({ dayRecord, budgets, statuses, selectedDateKey,
   }
 
   return (
-    <form className="meal-form" onSubmit={handleSubmit}>
+    <form className="meal-form" data-dirty={dirty} onSubmit={handleSubmit}>
       {meals.map((meal) => (
         <div className="meal-row" key={meal.key}>
           <div className="meal-input-grid">
