@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppData } from '../types';
 import { EXTRA_EXPENSE_CATEGORIES } from '../utils/extraCategories';
-import { bookFinance, fetchFinanceHistory, mergeEntries, parseFinanceFile, possibleDuplicates } from '../services/financeImportService';
+import { financeTarget } from '../utils/financeCategories';
+import { bookFinance, defaultBookingNote, fetchFinanceHistory, mergeEntries, parseFinanceFile, possibleDuplicates } from '../services/financeImportService';
 import type { Booking, FinanceEntry, FinancePosting } from '../services/financeImportService';
 import { connectLocalFinanceFeed, restoreLocalFinanceFeed } from '../services/localFinanceFeed';
 
@@ -90,7 +91,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       if (!chosen.length || chosen.some(e => !eligible(e))) throw new Error('请只选择金额和成功状态明确的支出或退款。');
       const bookings: Booking[] = chosen.map(e => {
         if (e.paymentDateReviewRequired && dateConfirmations[e.id] !== e.date) throw new Error('请核对实付款的实际扣款日期，并勾选日期确认。');
-        const reviewed = { ...e, ...(e.paymentDateReviewRequired ? {paymentDateConfirmedFor:e.date} : {}) };
+        const reviewed = { ...e, bookingNote: defaultBookingNote(e), ...(e.paymentDateReviewRequired ? {paymentDateConfirmedFor:e.date} : {}) };
         const target = targets[e.id]; if (!target) throw new Error('每条选中流水都需要选择入账方式。');
         if (e.evidenceOnly && !target.startsWith('link:') && !target.startsWith('manual:')) throw new Error('订单列表只可关联已经记录的实际支出；或先与扣款通知合并。');
         if (e.direction === 'refund' && !refunds[e.id]) throw new Error('退款需要关联已入账的原支出。');
@@ -101,6 +102,7 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       });
       const result = await bookFinance(bookings); saved=result;
       setSelected(new Set());
+      setTargets({});setDateConfirmations({});
       await history(); await onImported();
       setMessage(`入账 ${result.added} 条，已有流水 ${result.duplicates} 条。`);
     } catch(e) {
@@ -134,9 +136,10 @@ export function FinanceImportPanel({ data, onImported }: { data: AppData; onImpo
       {e.reviewedBooking && <p>Dating 核对：{e.reviewedBooking.disposition === 'ignore' ? '已忽略' : e.reviewedBooking.category} · {e.reviewedBooking.date}。{e.reviewedBooking.explanation}</p>}
       {eligible(e) && !e.evidenceOnly && (e.reviewedBooking?.disposition === 'confirm' || e.aiSuggestion) && <button className="secondary-button" disabled={busy} onClick={() => {
         const reviewed = e.reviewedBooking?.disposition === 'confirm' ? e.reviewedBooking : null;
-        setTargets(old => ({...old,[e.id]:`extra:${reviewed?.category || e.aiSuggestion?.category}`}));
+        setTargets(old => ({...old,[e.id]:financeTarget(reviewed?.category || e.aiSuggestion!.category,e.direction)}));
         if (reviewed) { setEntries(old => old.map(item => item.id === e.id ? {...item,date:reviewed.date} : item));setDateConfirmations(old => ({...old,[e.id]:reviewed.dateConfirmed ? reviewed.date : ''})); }
       }}>采用{e.reviewedBooking?.disposition === 'confirm' ? '已核对分类和日期' : 'AI 分类建议'}</button>}
+      {eligible(e) && <label>入账备注 <textarea value={defaultBookingNote(e)} maxLength={2000} rows={5} disabled={busy} onChange={event => {setTargets(old=>({...old,[e.id]:old[e.id]||''}));setEntries(old=>old.map(item=>item.id===e.id?{...item,bookingNote:event.target.value}:item));}} /></label>}
       {eligible(e) && e.paymentDateReviewRequired && <label><input type="checkbox" checked={dateConfirmations[e.id] === e.date} disabled={busy} onChange={event => setDateConfirmations(old => ({...old,[e.id]:event.target.checked ? e.date : ''}))} /> 已核对实际扣款日期：{e.date}</label>}
       {!!possibleDuplicates(e, entries).length && <p>同日、同额的其他来源：{possibleDuplicates(e, entries).map(x => x.sourceName).join('、')}。请核对是否同一笔。</p>}
       {eligible(e) && <label>入账方式 <select value={targets[e.id] ?? ''} disabled={busy} onChange={event => setTargets(old => ({...old,[e.id]:event.target.value}))}>

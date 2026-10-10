@@ -1,6 +1,6 @@
 import { requireSupabase } from '../lib/supabase';
 import type { Json } from '../types/database';
-import { EXTRA_EXPENSE_CATEGORIES } from '../utils/extraCategories';
+import { FINANCE_CATEGORIES } from '../utils/financeCategories';
 
 export type FinanceEntry = {
   id: string; provider: string; sourceName: string; title: string;
@@ -10,6 +10,7 @@ export type FinanceEntry = {
   identityKeys: string[]; sources: Record<string, unknown>[];
   evidenceOnly?: boolean; orderedAt?: string; paymentMethod?: string | null;
   paymentDateReviewRequired?: boolean;
+  bookingNote?: string;
   aiSuggestion?: {category: string; confidence: string; reason: string; question: string; evidenceIds: string[]} | null;
   reviewedBooking?: {category: string; explanation: string; date: string; dateConfirmed: boolean; disposition: string} | null;
 };
@@ -46,12 +47,13 @@ export function parseFinanceFile(text: string): FinanceEntry[] {
       throw new Error('流水的金额、日期、来源或身份字段不符合要求。');
     }
     ids.add(e.id);
-    if (e.aiSuggestion && (!EXTRA_EXPENSE_CATEGORIES.some(c => c === e.aiSuggestion?.category) ||
+    if (e.bookingNote !== undefined && (typeof e.bookingNote !== 'string' || e.bookingNote.length > 2000)) throw new Error('入账备注最多 2000 字。');
+    if (e.aiSuggestion && (!FINANCE_CATEGORIES.some(c => c === e.aiSuggestion?.category) ||
         typeof e.aiSuggestion.reason !== 'string' || typeof e.aiSuggestion.question !== 'string' ||
         !['high','medium','low'].includes(e.aiSuggestion.confidence) || !Array.isArray(e.aiSuggestion.evidenceIds) || e.aiSuggestion.evidenceIds.some(id => typeof id !== 'string'))) {
       throw new Error('AI 建议的类别或证据字段无效。');
     }
-    if (e.reviewedBooking && (!EXTRA_EXPENSE_CATEGORIES.some(c => c === e.reviewedBooking?.category) ||
+    if (e.reviewedBooking && (!FINANCE_CATEGORIES.some(c => c === e.reviewedBooking?.category) ||
         typeof e.reviewedBooking.explanation !== 'string' || typeof e.reviewedBooking.dateConfirmed !== 'boolean' ||
         !['confirm','ignore'].includes(e.reviewedBooking.disposition) || !/^\d{4}-\d{2}-\d{2}$/.test(e.reviewedBooking.date) ||
         Number.isNaN(Date.parse(e.reviewedBooking.date)) || new Date(e.reviewedBooking.date).toISOString().slice(0,10) !== e.reviewedBooking.date)) {
@@ -68,6 +70,7 @@ export function mergeEntries(entries: FinanceEntry[]): FinanceEntry {
     throw new Error('金额、日期和收支方向一致的通知才可合并；请先核对。');
   }
   return { ...first, title: entries.map(e => e.title).join(' / '),
+    bookingNote: [...new Set(entries.map(defaultBookingNote))].join('\n\n').slice(0,2000),
     evidenceOnly: entries.every(e => e.evidenceOnly === true),
     paymentDateReviewRequired: !entries.some(e => !e.evidenceOnly && e.occurredAt) && entries.some(e => e.paymentDateReviewRequired === true),
     occurredAt: entries.find(e => !e.evidenceOnly && e.occurredAt)?.occurredAt ?? first.occurredAt,
@@ -75,6 +78,12 @@ export function mergeEntries(entries: FinanceEntry[]): FinanceEntry {
     identityKeys: [...new Set(entries.flatMap(e => e.identityKeys))],
     sources: entries.flatMap(e => e.sources),
     reviewReasons: [...new Set(entries.flatMap(e => e.reviewReasons))] };
+}
+
+export function defaultBookingNote(entry: FinanceEntry): string {
+  if (entry.bookingNote !== undefined) return entry.bookingNote;
+  const parts = [entry.merchant, entry.title, entry.occurredAt ? `交易时间：${entry.occurredAt}` : '', entry.orderedAt ? `下单时间：${entry.orderedAt}` : '', entry.paymentMethod ? `支付方式：${entry.paymentMethod}` : '', `来源：${entry.sourceName}`, entry.reviewedBooking?.explanation];
+  return parts.filter(Boolean).join('\n').slice(0,2000);
 }
 
 export function possibleDuplicates(entry: FinanceEntry, entries: FinanceEntry[]): FinanceEntry[] {
