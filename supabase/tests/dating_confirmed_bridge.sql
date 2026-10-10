@@ -18,6 +18,9 @@ begin
   if result->>'added'<>'1' or result#>>'{postings,0,amountCents}'<>'6000' then raise exception 'receipt missing'; end if;
   result:=public.sync_confirmed_finance(repeat('test-dating-bridge-',4),jsonb_build_array(e),jsonb_build_array(e->>'id'));
   if result->>'duplicates'<>'1' or result->>'added'<>'0' then raise exception 'duplicate posting'; end if;
+  e:=jsonb_set(e,'{id}','"test-confirmed-bridge-second-source"');
+  result:=public.sync_confirmed_finance(repeat('test-dating-bridge-',4),jsonb_build_array(e),jsonb_build_array(e->>'id'));
+  if result->>'duplicates'<>'1' or result#>>'{postings,0,canonicalId}'<>e->>'id' or result#>>'{postings,0,storedCanonicalId}'<>'test-confirmed-bridge-lunch' then raise exception 'cross-source receipt missing'; end if;
 end $$;
 reset role;
 do $$ begin
